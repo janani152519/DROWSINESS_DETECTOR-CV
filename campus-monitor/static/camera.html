@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Classroom Camera Streamer | CampusGuard</title>
+  <style>
+    :root {
+      --bg: #f4eee2;
+      --card: #ffffff;
+      --card-alt: #fdfbf7;
+      --tx: #0a0c10;
+      --tx-muted: #3f444e;
+      --border: #11141a;
+      --shadow: 3px 3px 0px #11141a;
+      --ok: #047857;
+      --bad: #b91c1c;
+      --warn: #b45309;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--tx);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    .container {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    header {
+      text-align: center;
+      padding: 8px 0;
+    }
+    header h1 {
+      font-size: 20px;
+      font-weight: 800;
+      margin: 0 0 4px;
+    }
+    header p {
+      font-size: 13px;
+      color: var(--tx-muted);
+      margin: 0;
+      font-weight: 600;
+    }
+    .panel {
+      background: var(--card);
+      border: 2.5px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: var(--shadow);
+    }
+    label {
+      font-size: 12.5px;
+      color: var(--tx-muted);
+      font-weight: 700;
+    }
+    input {
+      background: var(--bg);
+      border: 2px solid var(--border);
+      color: var(--tx);
+      font-size: 14.5px;
+      font-weight: 600;
+      padding: 11px 13px;
+      border-radius: 8px;
+      outline: none;
+      width: 100%;
+    }
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+    }
+    button {
+      background: var(--border);
+      color: var(--card);
+      border: 2px solid var(--border);
+      font-size: 14px;
+      font-weight: 800;
+      padding: 12px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 2px 2px 0px var(--border);
+      transition: all 0.15s ease;
+    }
+    button.secondary {
+      background: var(--card);
+      color: var(--tx);
+    }
+    button.danger {
+      background: var(--bad);
+      color: #fff;
+    }
+    .video-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4/3;
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 2px solid var(--border);
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .status-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(10, 12, 16, 0.88);
+      color: #fff;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--tx-muted);
+    }
+    .dot.live {
+      background: #10b981;
+      box-shadow: 0 0 6px #10b981;
+      animation: pulse 1.2s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .telemetry-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      text-align: center;
+      background: var(--card-alt);
+      padding: 10px;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+    }
+    .telem-item b {
+      display: block;
+      font-size: 16px;
+      font-weight: 800;
+    }
+    .telem-item span {
+      font-size: 11px;
+      color: var(--tx-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    #errorBox {
+      display: none;
+      background: #fef2f2;
+      border: 2px solid var(--bad);
+      color: var(--bad);
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📱 Classroom Camera</h1>
+      <p>Stream live feed to Campus AI Sentinel</p>
+    </header>
+
+    <div class="panel">
+      <div>
+        <label for="roomName">Classroom / Room Identifier</label>
+        <input id="roomName" placeholder="e.g. CSE-A Room 101" value="">
+      </div>
+
+      <div class="btn-row">
+        <button id="startBtn">▶ Start Camera</button>
+        <button id="flipBtn" class="secondary" title="Flip Camera">🔄 Flip</button>
+      </div>
+
+      <div id="errorBox"></div>
+
+      <div class="video-wrap">
+        <video id="webcam" playsinline autoplay muted></video>
+        <div class="status-badge">
+          <span class="dot" id="statusDot"></span>
+          <span id="statusTxt">Standby</span>
+        </div>
+      </div>
+
+      <div class="telemetry-bar">
+        <div class="telem-item">
+          <b id="fpsCount">0.0</b>
+          <span>FPS</span>
+        </div>
+        <div class="telem-item">
+          <b id="frameCount">0</b>
+          <span>Frames</span>
+        </div>
+        <div class="telem-item">
+          <b id="pingCount">--</b>
+          <span>Ping</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const rid = location.pathname.split('/').pop() || 'room1';
+    const $ = id => document.getElementById(id);
+
+    let stream = null;
+    let ws = null;
+    let isStreaming = false;
+    let facingMode = 'environment';
+    let frameNum = 0;
+    let lastTime = performance.now();
+    let pingStart = 0;
+    let wakeLock = null;
+
+    const storedName = localStorage.getItem('cam_name_' + rid);
+    $('roomName').value = storedName || ('Classroom ' + rid.toUpperCase());
+
+    $('flipBtn').onclick = async () => {
+      facingMode = facingMode === 'environment' ? 'user' : 'environment';
+      if (isStreaming) await startMedia();
+    };
+
+    $('startBtn').onclick = async () => {
+      if (isStreaming) {
+        stopStreaming();
+      } else {
+        await startStreaming();
+      }
+    };
+
+    async function startMedia() {
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: facingMode }, width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: false
+        });
+        $('webcam').srcObject = stream;
+        await $('webcam').play();
+        $('errorBox').style.display = 'none';
+        return true;
+      } catch (err) {
+        console.error("Camera error:", err);
+        $('errorBox').style.display = 'block';
+        $('errorBox').innerHTML = `⚠️ <b>Camera Blocked:</b> ${err.message || 'Permission denied or requires HTTPS.'}`;
+        return false;
+      }
+    }
+
+    async function startStreaming() {
+      const ok = await startMedia();
+      if (!ok) return;
+
+      const wsProtocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
+      const wsUrl = `${wsProtocol}${location.host}/ws/camera/${rid}`;
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        isStreaming = true;
+        $('statusDot').className = 'dot live';
+        $('statusTxt').textContent = 'Live Streaming';
+        $('startBtn').textContent = '⏹ Stop Camera';
+        $('startBtn').className = 'danger';
+
+        const nameVal = $('roomName').value.trim();
+        if (nameVal) {
+          localStorage.setItem('cam_name_' + rid, nameVal);
+          ws.send(JSON.stringify({ name: nameVal }));
+        }
+
+        if ('wakeLock' in navigator) {
+          navigator.wakeLock.request('screen').then(lock => wakeLock = lock).catch(() => {});
+        }
+
+        sendNextFrame();
+      };
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      function sendNextFrame() {
+        if (!isStreaming || ws.readyState !== WebSocket.OPEN) return;
+        const v = $('webcam');
+        if (!v.videoWidth || !v.videoHeight) {
+          setTimeout(sendNextFrame, 80);
+          return;
+        }
+
+        const targetWidth = 520;
+        const targetHeight = Math.round(targetWidth * (v.videoHeight / v.videoWidth));
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        ctx.drawImage(v, 0, 0, targetWidth, targetHeight);
+
+        pingStart = performance.now();
+        canvas.toBlob(blob => {
+          if (ws && ws.readyState === WebSocket.OPEN && blob) {
+            ws.send(blob);
+          }
+        }, 'image/jpeg', 0.65);
+      }
+
+      ws.onmessage = () => {
+        frameNum++;
+        $('frameCount').textContent = frameNum;
+        const now = performance.now();
+        $('pingCount').textContent = Math.round(now - pingStart) + 'ms';
+
+        const elapsed = (now - lastTime) / 1000;
+        if (elapsed >= 0.5) {
+          $('fpsCount').textContent = (frameNum / elapsed).toFixed(1);
+          frameNum = 0;
+          lastTime = now;
+        }
+
+        setTimeout(sendNextFrame, 75);
+      };
+
+      ws.onclose = () => stopStreaming();
+      ws.onerror = () => stopStreaming();
+    }
+
+    function stopStreaming() {
+      isStreaming = false;
+      if (ws) { ws.close(); ws = null; }
+      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+      if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+
+      $('statusDot').className = 'dot';
+      $('statusTxt').textContent = 'Standby';
+      $('startBtn').textContent = '▶ Start Camera';
+      $('startBtn').className = '';
+      $('fpsCount').textContent = '0.0';
+      $('pingCount').textContent = '--';
+    }
+  </script>
+</body>
+</html>

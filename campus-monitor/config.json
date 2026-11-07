@@ -1,0 +1,17 @@
+{
+  "watch": {
+    "cell phone": "Mobile phone"
+  },
+  "head_down_seconds": 6,
+  "eyes_closed_seconds": 1.5,
+  "phone_alert_frames": 2,
+  "alert_cooldown": 12,
+  "rooms": {
+    "e569b0": "Classroom 1",
+    "e4e07c": "Classroom 1",
+    "d54bb9": "Classroom 1",
+    "86256f": "Classroom 1",
+    "sentinel_laptop": "Sentinel Laptop Camera",
+    "ea9d4e": "Classroom 6"
+  }
+}

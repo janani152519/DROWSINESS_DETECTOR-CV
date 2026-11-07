@@ -1,0 +1,1465 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AttentionAI - Real-Time Focus Tracker</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      /* Default Sleek Dark Theme matching AttentionAI Reference */
+      --bg: #0f1117;
+      --bg-card: #171923;
+      --bg-card-inner: #1f2230;
+      --border: #2d3345;
+      --border-accent: #3d455d;
+      --tx-main: #f8fafc;
+      --tx-muted: #94a3b8;
+      --tx-dim: #64748b;
+
+      /* State Colors */
+      --focused: #10b981;
+      --focused-glow: rgba(16, 185, 129, 0.2);
+      --distracted: #f59e0b;
+      --distracted-glow: rgba(245, 158, 11, 0.2);
+      --drowsy: #ef4444;
+      --drowsy-glow: rgba(239, 68, 68, 0.25);
+      --blue: #3b82f6;
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+    }
+
+    [data-theme="beige"] {
+      /* High Contrast Warm Beige & Jet Black Theme Option */
+      --bg: #f5ede0;
+      --bg-card: #ffffff;
+      --bg-card-inner: #f4ece0;
+      --border: #14171f;
+      --border-accent: #323947;
+      --tx-main: #090b0e;
+      --tx-muted: #3d4350;
+      --tx-dim: #636b7b;
+
+      --focused: #059669;
+      --focused-glow: rgba(5, 150, 105, 0.18);
+      --distracted: #d97706;
+      --distracted-glow: rgba(217, 119, 6, 0.18);
+      --drowsy: #dc2626;
+      --drowsy-glow: rgba(220, 38, 38, 0.2);
+      --blue: #2563eb;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--tx-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.45;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    /* Header Bar matching AttentionAI */
+    header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, #3b82f6, #10b981);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      margin: 0;
+      color: var(--tx-main);
+    }
+
+    .brand-sub {
+      font-size: 13px;
+      color: var(--tx-muted);
+      font-weight: 400;
+      margin-left: 6px;
+    }
+
+    .live-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--focused);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--focused);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: var(--bg-card-inner);
+      color: var(--tx-main);
+      padding: 7px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      border-color: var(--border-accent);
+      background: var(--border);
+    }
+
+    .btn-primary {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      opacity: 0.92;
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: var(--drowsy);
+    }
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.22);
+    }
+
+    /* Main Container: Two-Panel Grid Layout */
+    main {
+      flex: 1;
+      padding: 20px 24px;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .layout-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 1080px) {
+      .layout-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Panels & Cards */
+    .panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+
+    .panel-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-card);
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--tx-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+    }
+
+    .fps-badge {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-card-inner);
+      border: 1px solid var(--border);
+      color: var(--tx-main);
+      font-family: monospace;
+    }
+
+    /* Live Feed Container */
+    .video-viewport {
+      position: relative;
+      background: #000;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    #streamCanvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    #localVideo {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1px;
+      height: 1px;
+      opacity: 0.001;
+      pointer-events: none;
+    }
+
+    .video-overlay-msg {
+      position: absolute;
+      text-align: center;
+      padding: 24px;
+      background: rgba(15, 17, 23, 0.85);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      backdrop-filter: blur(8px);
+      max-width: 320px;
+    }
+
+    .feed-controls {
+      padding: 12px 18px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      background: var(--bg-card);
+    }
+
+    .select-input {
+      background: var(--bg-card-inner);
+      border: 1px solid var(--border);
+      color: var(--tx-main);
+      padding: 7px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      outline: none;
+    }
+
+    /* Right Sidebar Diagnostic Stack */
+    .diagnostics-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+
+    .card-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--tx-dim);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* 1. Status Card */
+    .status-card {
+      border-left: 4px solid var(--distracted);
+      transition: border-color 0.2s ease;
+    }
+    .status-card.focused { border-left-color: var(--focused); }
+    .status-card.distracted { border-left-color: var(--distracted); }
+    .status-card.drowsy { border-left-color: var(--drowsy); }
+
+    .status-main {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .status-label {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin: 0;
+    }
+
+    .status-label.focused { color: var(--focused); }
+    .status-label.distracted { color: var(--distracted); }
+    .status-label.drowsy { color: var(--drowsy); }
+
+    .confidence-badge {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--tx-muted);
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 8px;
+      background: var(--bg-card-inner);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--distracted);
+      border-radius: 4px;
+      transition: width 0.2s ease, background-color 0.2s ease;
+    }
+
+    .status-reason {
+      font-size: 12px;
+      color: var(--tx-dim);
+    }
+
+    /* 2. Metric Tiles (Row of 3) */
+    .metric-tiles-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .metric-tile {
+      background: var(--bg-card-inner);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 12px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .tile-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--tx-dim);
+      margin-bottom: 6px;
+    }
+
+    .tile-value {
+      font-size: 22px;
+      font-weight: 700;
+      font-family: monospace;
+      color: var(--tx-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .tile-sub {
+      font-size: 11px;
+      color: var(--tx-muted);
+      margin-top: 4px;
+    }
+
+    /* 3. Head Pose Card */
+    .pose-item {
+      margin-bottom: 12px;
+    }
+    .pose-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .pose-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .pose-deg {
+      font-family: monospace;
+      font-weight: 600;
+    }
+
+    .pose-track {
+      height: 6px;
+      background: var(--bg-card-inner);
+      border-radius: 3px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .pose-fill {
+      position: absolute;
+      height: 100%;
+      background: var(--blue);
+      border-radius: 3px;
+      transition: width 0.15s ease, left 0.15s ease;
+    }
+
+    /* 4. Session Summary Donut Card */
+    .summary-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .timer-badge {
+      font-family: monospace;
+      font-size: 15px;
+      font-weight: 700;
+      background: var(--bg-card-inner);
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+    }
+
+    .chart-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+    }
+
+    .donut-wrapper {
+      position: relative;
+      width: 140px;
+      height: 140px;
+    }
+
+    .donut-canvas {
+      width: 140px;
+      height: 140px;
+    }
+
+    .donut-center-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .donut-center-pct {
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .donut-center-lbl {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--tx-dim);
+      margin-top: 2px;
+    }
+
+    .chart-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .legend-val {
+      font-weight: 600;
+      margin-left: auto;
+      font-family: monospace;
+    }
+
+    /* 5. Classroom Fleet & Multi-Cam Accordion */
+    .fleet-section {
+      margin-top: 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+    }
+
+    .fleet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .fleet-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .fleet-card {
+      background: var(--bg-card-inner);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      padding: 12px;
+    }
+
+    .fleet-thumb {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border-radius: var(--radius-sm);
+      object-fit: cover;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .alert-feed {
+      margin-top: 16px;
+      max-height: 180px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .alert-pill {
+      background: var(--bg-card-inner);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+    .alert-pill.critical { border-left: 3px solid var(--drowsy); }
+    .alert-pill.warning { border-left: 3px solid var(--distracted); }
+
+    /* Modal for QR Join */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop.show { display: flex; }
+
+    .modal-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+    }
+
+    #qrcode-container {
+      display: flex;
+      justify-content: center;
+      margin: 16px 0;
+    }
+    #qrcode-container img {
+      border: 8px solid #fff;
+      border-radius: var(--radius-sm);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header Bar -->
+  <header>
+    <div class="brand-group">
+      <div class="brand-icon">AI</div>
+      <div>
+        <h1 class="brand-title">AttentionAI <span class="brand-sub">- Real-Time Focus Tracker</span></h1>
+      </div>
+      <div class="live-indicator">
+        <span class="live-dot"></span>
+        <span id="liveStatusText">Live</span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn" id="audioToggleBtn" title="Toggle audio beeps on drowsiness / phone violation">
+        <span id="audioIcon">🔊</span> Enable Audio
+      </button>
+      <button class="btn btn-danger" id="resetSessionBtn">
+        ↺ Reset Session
+      </button>
+      <button class="btn" id="qrJoinBtn">
+        📱 Connect Phone Cam
+      </button>
+      <button class="btn" id="themeToggleBtn" title="Toggle Dark / Beige theme">
+        🎨 Theme
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Grid Layout -->
+  <main>
+    <div class="layout-grid">
+
+      <!-- LEFT: Live Video Feed Panel (60% width) -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">📹 LIVE FEED</h2>
+          <span class="fps-badge" id="fpsBadge">18.3 FPS</span>
+        </div>
+
+        <div class="video-viewport">
+          <canvas id="streamCanvas"></canvas>
+          <video id="localVideo" autoplay playsinline muted></video>
+
+          <div class="video-overlay-msg" id="cameraPrompt">
+            <h3 style="margin-top:0;">Webcam Standby</h3>
+            <p style="color:var(--tx-muted);font-size:13px;">Click Start Camera to initialize laptop attention tracking & MediaPipe landmark analysis.</p>
+            <button class="btn btn-primary" id="startCamBtn" style="width:100%;justify-content:center;">
+              ▶ Start Camera
+            </button>
+          </div>
+        </div>
+
+        <div class="feed-controls">
+          <div style="display:flex;gap:10px;align-items:center;">
+            <button class="btn btn-primary" id="toggleCamBtn">▶ Start Camera</button>
+            <button class="btn" id="snapshotBtn">📷 Snapshot</button>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <select class="select-input" id="cameraSelect">
+              <option value="">Default Laptop Camera</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT: Diagnostic Analytics Stack (40% width) -->
+      <aside class="diagnostics-stack">
+
+        <!-- 1. State Status Card -->
+        <div class="card status-card" id="statusCard">
+          <div class="card-title">
+            <span>CURRENT STATE</span>
+            <span id="stateEmoji">🎯</span>
+          </div>
+          <div class="status-main">
+            <h3 class="status-label" id="stateLabel">Focused</h3>
+            <span class="confidence-badge" id="confidenceLabel">Confidence: 85%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="confidenceBar" style="width: 85%;"></div>
+          </div>
+          <div class="status-reason" id="stateReason">Attentive & engaged</div>
+        </div>
+
+        <!-- 2. Three Metric Tiles in a Row -->
+        <div class="metric-tiles-row">
+          <!-- EAR Tile -->
+          <div class="metric-tile">
+            <div class="tile-title">EYE ASPECT RATIO</div>
+            <div class="tile-value" id="earValue">0.280</div>
+            <div class="tile-sub" id="earStatus">Eyes Open</div>
+          </div>
+
+          <!-- Blinks Tile -->
+          <div class="metric-tile">
+            <div class="tile-title">BLINKS/MIN</div>
+            <div class="tile-value" id="blinksValue">18</div>
+            <div class="tile-sub">Target: 12-24</div>
+          </div>
+
+          <!-- Gaze Tile -->
+          <div class="metric-tile">
+            <div class="tile-title">GAZE DIRECTION</div>
+            <div class="tile-value" id="gazeValue">Center ◉</div>
+            <div class="tile-sub" id="gazeSub">Forward</div>
+          </div>
+        </div>
+
+        <!-- 3. Head Pose Card -->
+        <div class="card">
+          <div class="card-title">HEAD POSE (DEGREES)</div>
+
+          <!-- Yaw -->
+          <div class="pose-item">
+            <div class="pose-header">
+              <span>Yaw (Turn Left / Right)</span>
+              <span class="pose-deg" id="yawDeg">0.0°</span>
+            </div>
+            <div class="pose-track">
+              <div class="pose-fill" id="yawBar" style="left:50%;width:0%;"></div>
+            </div>
+          </div>
+
+          <!-- Pitch -->
+          <div class="pose-item">
+            <div class="pose-header">
+              <span>Pitch (Nod Up / Down)</span>
+              <span class="pose-deg" id="pitchDeg">0.0°</span>
+            </div>
+            <div class="pose-track">
+              <div class="pose-fill" id="pitchBar" style="left:50%;width:0%;"></div>
+            </div>
+          </div>
+
+          <!-- Roll -->
+          <div class="pose-item">
+            <div class="pose-header">
+              <span>Roll (Tilt Sideways)</span>
+              <span class="pose-deg" id="rollDeg">0.0°</span>
+            </div>
+            <div class="pose-track">
+              <div class="pose-fill" id="rollBar" style="left:50%;width:0%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Session Summary Donut Card -->
+        <div class="card">
+          <div class="summary-header">
+            <span class="card-title" style="margin:0;">SESSION SUMMARY</span>
+            <span class="timer-badge" id="sessionTimer">00:00:00</span>
+          </div>
+
+          <div class="chart-container">
+            <div class="donut-wrapper">
+              <canvas id="donutChart" class="donut-canvas" width="280" height="280"></canvas>
+              <div class="donut-center-text">
+                <div class="donut-center-pct" id="donutCenterPct">100%</div>
+                <div class="donut-center-lbl">Focused</div>
+              </div>
+            </div>
+
+            <div class="chart-legend">
+              <div class="legend-item">
+                <span class="legend-dot" style="background:var(--focused);"></span>
+                <span>Focused:</span>
+                <span class="legend-val" id="focusedPct">100.0%</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot" style="background:var(--distracted);"></span>
+                <span>Distracted:</span>
+                <span class="legend-val" id="distractedPct">0.0%</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot" style="background:var(--drowsy);"></span>
+                <span>Drowsy:</span>
+                <span class="legend-val" id="drowsyPct">0.0%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+
+    </div>
+
+    <!-- Multi-Camera Classroom Fleet & Incident Feed (Preserving All Classroom Features) -->
+    <section class="fleet-section">
+      <div class="fleet-header">
+        <div>
+          <h3 style="margin:0;font-size:16px;">Campus Classroom Cameras & Alerts</h3>
+          <p style="margin:4px 0 0;font-size:12px;color:var(--tx-muted);">
+            Manage multi-camera fleet streams, add additional student phones, and inspect incident logs.
+          </p>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <a href="/api/reports/incidents.csv" class="btn" download>📥 Export Incidents CSV</a>
+          <button class="btn btn-primary" id="addCamBtn">➕ Add Classroom Camera</button>
+        </div>
+      </div>
+
+      <!-- Remote Camera Cards -->
+      <div class="fleet-grid" id="fleetGrid">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Incident Alerts -->
+      <div style="margin-top:20px;">
+        <h4 style="font-size:13px;color:var(--tx-muted);text-transform:uppercase;margin:0 0 10px;">Real-Time Alert Feed</h4>
+        <div class="alert-feed" id="alertFeed">
+          <div style="color:var(--tx-dim);font-size:12px;padding:8px;">No incidents recorded yet.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Connect Phone Camera Modal -->
+  <div class="modal-backdrop" id="qrModal">
+    <div class="modal-box">
+      <h3 style="margin-top:0;">Connect Phone as Camera</h3>
+      <p style="color:var(--tx-muted);font-size:13px;">Scan this QR code with any smartphone connected to the same Wi-Fi to use its camera.</p>
+      <div id="qrcode-container"></div>
+      <p id="qrUrlText" style="font-family:monospace;font-size:11px;word-break:break-all;color:var(--blue);"></p>
+      <button class="btn" id="closeQrBtn" style="width:100%;justify-content:center;margin-top:12px;">Close</button>
+    </div>
+  </div>
+
+  <script>
+    // System State
+    const SENTINEL_ROOM_ID = "sentinel_laptop";
+    let wsCamera = null;
+    let wsDashboard = null;
+    let videoStream = null;
+    let isCameraRunning = false;
+    let captureInterval = null;
+    let audioAlertsEnabled = false;
+    let lastAlertAudioTime = 0;
+    let serverConfig = null;
+
+    // Web Audio Synthesizer
+    let audioCtx = null;
+    function playBeep(freq = 750, dur = 0.25, type = "sine") {
+      if (!audioAlertsEnabled) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + dur);
+      } catch (e) {
+        console.warn("Audio play error:", e);
+      }
+    }
+
+    function speakAlert(text) {
+      if (!audioAlertsEnabled || !('speechSynthesis' in window)) return;
+      const now = Date.now();
+      if (now - lastAlertAudioTime < 5000) return;
+      lastAlertAudioTime = now;
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.rate = 1.05;
+      window.speechSynthesis.speak(utt);
+    }
+
+    // Canvas Video Renderer
+    const canvas = document.getElementById("streamCanvas");
+    const ctx = canvas.getContext("2d");
+    const video = document.getElementById("localVideo");
+    const offscreenCanvas = document.createElement("canvas");
+    const offCtx = offscreenCanvas.getContext("2d");
+
+    // Donut Chart Renderer
+    const donutCanvas = document.getElementById("donutChart");
+    const donutCtx = donutCanvas.getContext("2d");
+
+    function drawDonutChart(focusedPct, distractedPct, drowsyPct) {
+      const w = donutCanvas.width;
+      const h = donutCanvas.height;
+      const cx = w / 2;
+      const cy = h / 2;
+      const radius = w * 0.42;
+      const lineWidth = w * 0.16;
+
+      donutCtx.clearRect(0, 0, w, h);
+
+      const f = Math.max(0, focusedPct) / 100;
+      const di = Math.max(0, distractedPct) / 100;
+      const dr = Math.max(0, drowsyPct) / 100;
+      const total = f + di + dr || 1;
+
+      const angleF = (f / total) * Math.PI * 2;
+      const angleDi = (di / total) * Math.PI * 2;
+      const angleDr = (dr / total) * Math.PI * 2;
+
+      let cur = -Math.PI / 2;
+
+      function drawArc(angle, color) {
+        if (angle <= 0.001) return;
+        donutCtx.beginPath();
+        donutCtx.arc(cx, cy, radius, cur, cur + angle);
+        donutCtx.strokeStyle = color;
+        donutCtx.lineWidth = lineWidth;
+        donutCtx.lineCap = "butt";
+        donutCtx.stroke();
+        cur += angle;
+      }
+
+      // Base Track
+      donutCtx.beginPath();
+      donutCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+      donutCtx.strokeStyle = "rgba(100, 116, 139, 0.15)";
+      donutCtx.lineWidth = lineWidth;
+      donutCtx.stroke();
+
+      drawArc(angleF, getComputedStyle(document.documentElement).getPropertyValue('--focused').trim() || "#10b981");
+      drawArc(angleDi, getComputedStyle(document.documentElement).getPropertyValue('--distracted').trim() || "#f59e0b");
+      drawArc(angleDr, getComputedStyle(document.documentElement).getPropertyValue('--drowsy').trim() || "#ef4444");
+    }
+
+    // Format Seconds to HH:MM:SS
+    function formatTime(sec) {
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = Math.floor(sec % 60);
+      return [h, m, s].map(v => v < 10 ? "0" + v : v).join(":");
+    }
+
+    // Connect WebSocket to Sentinel Engine
+    let lastAiFrameTime = 0;
+    let isFrameInFlight = false;
+    let hasReceivedAiFrame = false;
+
+    function connectSentinelWs() {
+      if (wsCamera && (wsCamera.readyState === WebSocket.OPEN || wsCamera.readyState === WebSocket.CONNECTING)) {
+        return;
+      }
+      const loc = window.location;
+      const proto = loc.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${proto}//${loc.host}/ws/camera/${SENTINEL_ROOM_ID}`;
+
+      try {
+        wsCamera = new WebSocket(wsUrl);
+
+        wsCamera.onopen = () => {
+          document.getElementById("liveStatusText").textContent = "AI Live Analysis Active";
+          wsCamera.send(JSON.stringify({ name: "Sentinel Laptop Camera" }));
+        };
+
+        wsCamera.onmessage = (evt) => {
+          try {
+            isFrameInFlight = false;
+            hasReceivedAiFrame = true;
+            const data = JSON.parse(evt.data);
+            if (data.action === "session_reset") {
+              resetSessionUI();
+            }
+            updateTelemetry(data);
+
+            if (data.frame) {
+              lastAiFrameTime = Date.now();
+              const img = new Image();
+              img.onload = () => {
+                if (canvas.width !== img.width || canvas.height !== img.height) {
+                  canvas.width = img.width;
+                  canvas.height = img.height;
+                }
+                ctx.drawImage(img, 0, 0);
+              };
+              img.src = "data:image/jpeg;base64," + data.frame;
+            }
+          } catch (e) {
+            console.warn("Parse error:", e);
+          }
+        };
+
+        wsCamera.onerror = (err) => {
+          console.warn("wsCamera error:", err);
+        };
+
+        wsCamera.onclose = () => {
+          isFrameInFlight = false;
+          document.getElementById("liveStatusText").textContent = isCameraRunning ? "Camera Active (Reconnecting AI...)" : "Reconnecting...";
+          setTimeout(connectSentinelWs, 1800);
+        };
+      } catch (err) {
+        setTimeout(connectSentinelWs, 2000);
+      }
+    }
+
+    // Direct Video Canvas Render Loop (Guarantees Instant Video Display until AI connects)
+    function startLocalRenderLoop() {
+      function drawLocal() {
+        if (isCameraRunning && video.readyState >= 2) {
+          if (!hasReceivedAiFrame) {
+            const vw = video.videoWidth || 640;
+            const vh = video.videoHeight || 480;
+            if (canvas.width !== vw || canvas.height !== vh) {
+              canvas.width = vw;
+              canvas.height = vh;
+            }
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          }
+        }
+        if (isCameraRunning && !hasReceivedAiFrame) {
+          requestAnimationFrame(drawLocal);
+        }
+      }
+      requestAnimationFrame(drawLocal);
+    }
+
+    // Connect Global Dashboard WebSocket for Classroom Fleet
+    function connectDashboardWs() {
+      const loc = window.location;
+      const proto = loc.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${proto}//${loc.host}/ws/dashboard`;
+
+      wsDashboard = new WebSocket(wsUrl);
+
+      wsDashboard.onmessage = (evt) => {
+        try {
+          const data = JSON.parse(evt.data);
+          renderFleet(data.cameras || []);
+          renderAlerts(data.alerts || []);
+        } catch (e) {}
+      };
+
+      wsDashboard.onclose = () => {
+        setTimeout(connectDashboardWs, 2500);
+      };
+    }
+
+    // Update Diagnostics Dashboard UI with Ingested Telemetry
+    function updateTelemetry(d) {
+      if (!d) return;
+
+      // 1. Status Card
+      const state = d.state || "Focused";
+      const conf = d.confidence || 85;
+      const reason = d.reason || "";
+
+      const stateLabel = document.getElementById("stateLabel");
+      const stateEmoji = document.getElementById("stateEmoji");
+      const statusCard = document.getElementById("statusCard");
+      const confidenceLabel = document.getElementById("confidenceLabel");
+      const confidenceBar = document.getElementById("confidenceBar");
+      const stateReason = document.getElementById("stateReason");
+
+      stateLabel.textContent = state;
+      stateLabel.className = `status-label ${state.toLowerCase()}`;
+      statusCard.className = `card status-card ${state.toLowerCase()}`;
+
+      if (state === "Focused") {
+        stateEmoji.textContent = "🎯";
+        confidenceBar.style.backgroundColor = "var(--focused)";
+      } else if (state === "Distracted") {
+        stateEmoji.textContent = "⚠️";
+        confidenceBar.style.backgroundColor = "var(--distracted)";
+        if (d.phone) {
+          playBeep(880, 0.4, "sawtooth");
+          speakAlert("Mobile phone violation detected!");
+        }
+      } else {
+        stateEmoji.textContent = "💤";
+        confidenceBar.style.backgroundColor = "var(--drowsy)";
+        playBeep(440, 0.5, "sine");
+        speakAlert("Drowsiness warning! Please stay focused.");
+      }
+
+      confidenceLabel.textContent = `Confidence: ${conf}%`;
+      confidenceBar.style.width = `${conf}%`;
+      stateReason.textContent = reason;
+
+      // 2. Metric Tiles
+      const ear = d.ear !== undefined ? d.ear.toFixed(3) : "0.280";
+      document.getElementById("earValue").textContent = ear;
+      document.getElementById("earStatus").textContent = d.eyes_open ? "Eyes Open" : "Eyes Closed!";
+      document.getElementById("earStatus").style.color = d.eyes_open ? "var(--tx-muted)" : "var(--drowsy)";
+
+      document.getElementById("blinksValue").textContent = d.blinks_per_min !== undefined ? d.blinks_per_min : 18;
+
+      const gaze = d.gaze || "center";
+      let gazeArrow = "◉";
+      if (gaze === "down") gazeArrow = "↓";
+      if (gaze === "up") gazeArrow = "↑";
+      if (gaze === "left") gazeArrow = "←";
+      if (gaze === "right") gazeArrow = "→";
+      document.getElementById("gazeValue").textContent = `${gaze.toUpperCase()} ${gazeArrow}`;
+      document.getElementById("gazeSub").textContent = gaze === "center" ? "Forward View" : "Averted Gaze";
+
+      // 3. Head Pose Bars (-90 to +90 degrees)
+      const yaw = d.yaw || 0.0;
+      const pitch = d.pitch || 0.0;
+      const roll = d.roll || 0.0;
+
+      document.getElementById("yawDeg").textContent = `${yaw >= 0 ? "+" : ""}${yaw.toFixed(1)}°`;
+      document.getElementById("pitchDeg").textContent = `${pitch >= 0 ? "+" : ""}${pitch.toFixed(1)}°`;
+      document.getElementById("rollDeg").textContent = `${roll >= 0 ? "+" : ""}${roll.toFixed(1)}°`;
+
+      function setBar(barId, val, maxVal = 90) {
+        const bar = document.getElementById(barId);
+        const clamped = Math.max(-maxVal, Math.min(maxVal, val));
+        const pct = (clamped / maxVal) * 50; // -50% to +50% from center
+        if (pct >= 0) {
+          bar.style.left = "50%";
+          bar.style.width = `${pct}%`;
+        } else {
+          bar.style.left = `${50 + pct}%`;
+          bar.style.width = `${Math.abs(pct)}%`;
+        }
+      }
+
+      setBar("yawBar", yaw, 60);
+      setBar("pitchBar", pitch, 60);
+      setBar("rollBar", roll, 90);
+
+      // 4. Session Summary Donut & Timer
+      const fPct = d.session_focused_pct !== undefined ? d.session_focused_pct : 100.0;
+      const diPct = d.session_distracted_pct !== undefined ? d.session_distracted_pct : 0.0;
+      const drPct = d.session_drowsy_pct !== undefined ? d.session_drowsy_pct : 0.0;
+
+      document.getElementById("focusedPct").textContent = `${fPct.toFixed(1)}%`;
+      document.getElementById("distractedPct").textContent = `${diPct.toFixed(1)}%`;
+      document.getElementById("drowsyPct").textContent = `${drPct.toFixed(1)}%`;
+
+      document.getElementById("donutCenterPct").textContent = `${Math.round(fPct)}%`;
+      document.getElementById("sessionTimer").textContent = formatTime(d.session_elapsed || 0);
+
+      drawDonutChart(fPct, diPct, drPct);
+
+      // FPS Badge
+      if (d.fps !== undefined) {
+        document.getElementById("fpsBadge").textContent = `${d.fps.toFixed(1)} FPS`;
+      }
+    }
+
+    // Start Webcam Capture
+    async function startCamera() {
+      try {
+        connectSentinelWs();
+        const select = document.getElementById("cameraSelect");
+        const deviceId = select ? select.value : "";
+        
+        let stream = null;
+        if (deviceId) {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: { deviceId: { exact: deviceId } },
+              audio: false
+            });
+          } catch (e1) {
+            console.warn("Exact deviceId failed, falling back to ideal device:", e1);
+          }
+        }
+        
+        if (!stream) {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: { width: { ideal: 640 }, height: { ideal: 480 } },
+              audio: false
+            });
+          } catch (e2) {
+            console.warn("Ideal resolution failed, falling back to simple video:", e2);
+            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          }
+        }
+
+        videoStream = stream;
+        video.srcObject = videoStream;
+        await video.play();
+
+        isCameraRunning = true;
+        document.getElementById("cameraPrompt").style.display = "none";
+        document.getElementById("toggleCamBtn").textContent = "⏹ Stop Camera";
+        document.getElementById("toggleCamBtn").className = "btn btn-danger";
+
+        // Start instantaneous local render loop
+        startLocalRenderLoop();
+
+        // Setup offscreen canvas
+        offscreenCanvas.width = 640;
+        offscreenCanvas.height = 480;
+
+        // Frame capture loop with ping-pong pacing (zero latency, zero backlog)
+        if (captureInterval) clearInterval(captureInterval);
+        captureInterval = setInterval(() => {
+          if (!isCameraRunning || video.readyState < 2) return;
+          if (!wsCamera || wsCamera.readyState !== WebSocket.OPEN) return;
+          if (isFrameInFlight) return; // Wait for previous frame's AI response
+
+          isFrameInFlight = true;
+          offCtx.drawImage(video, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
+          offscreenCanvas.toBlob((blob) => {
+            if (blob && wsCamera && wsCamera.readyState === WebSocket.OPEN) {
+              blob.arrayBuffer().then((buf) => {
+                if (wsCamera && wsCamera.readyState === WebSocket.OPEN) {
+                  wsCamera.send(buf);
+                } else {
+                  isFrameInFlight = false;
+                }
+              });
+            } else {
+              isFrameInFlight = false;
+            }
+          }, "image/jpeg", 0.72);
+        }, 40);
+
+      } catch (err) {
+        console.error("Camera access failed:", err);
+        alert("Camera Error: " + err.message + "\n\nPlease ensure you grant camera permissions in your browser bar (click the lock/camera icon next to the URL).");
+      }
+    }
+
+    function stopCamera() {
+      isCameraRunning = false;
+      isFrameInFlight = false;
+      hasReceivedAiFrame = false;
+      if (captureInterval) {
+        clearInterval(captureInterval);
+        captureInterval = null;
+      }
+      if (videoStream) {
+        videoStream.getTracks().forEach(t => t.stop());
+        videoStream = null;
+      }
+      document.getElementById("cameraPrompt").style.display = "block";
+      document.getElementById("toggleCamBtn").textContent = "▶ Start Camera";
+      document.getElementById("toggleCamBtn").className = "btn btn-primary";
+    }
+
+    // Enumerate Available Cameras
+    async function listCameras() {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === "videoinput");
+        const select = document.getElementById("cameraSelect");
+        select.innerHTML = "";
+        videoDevices.forEach((dev, idx) => {
+          const opt = document.createElement("option");
+          opt.value = dev.deviceId;
+          opt.textContent = dev.label || `Camera ${idx + 1}`;
+          select.appendChild(opt);
+        });
+      } catch (e) {}
+    }
+
+    // Render Remote Classroom Cameras
+    function renderFleet(cameras) {
+      const grid = document.getElementById("fleetGrid");
+      // Filter out our own laptop sentinel camera
+      const remotes = cameras.filter(c => c.id !== SENTINEL_ROOM_ID);
+
+      if (remotes.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column: 1 / -1; color: var(--tx-dim); font-size: 13px; text-align: center; padding: 24px; border: 1px dashed var(--border); border-radius: var(--radius-md);">
+            No remote classroom cameras connected. Click "Connect Phone Cam" above to pair a phone!
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = remotes.map(c => `
+        <div class="fleet-card">
+          <img class="fleet-thumb" src="${c.thumb ? 'data:image/jpeg;base64,' + c.thumb : 'data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'320\' height=\'180\'><rect fill=\'%23111\' width=\'100%25\' height=\'100%25\'/><text fill=\'%23555\' x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\'>Offline</text></svg>'}" />
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <strong style="font-size:13px;">${c.name}</strong>
+            <span style="font-size:11px;font-weight:600;color:${c.online ? 'var(--focused)' : 'var(--tx-dim)'};">${c.online ? '● Online' : '○ Offline'}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--tx-muted);">
+            <span>Engagement: ${c.stats ? c.stats.engagement : 100}%</span>
+            <span>Phones: ${c.stats ? c.stats.phones : 0}</span>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    // Render Incident Alerts
+    function renderAlerts(alerts) {
+      const feed = document.getElementById("alertFeed");
+      if (!alerts || alerts.length === 0) {
+        feed.innerHTML = `<div style="color:var(--tx-dim);font-size:12px;padding:8px;">No incidents recorded yet.</div>`;
+        return;
+      }
+
+      feed.innerHTML = alerts.map(a => `
+        <div class="alert-pill ${a.severity}">
+          <div>
+            <strong>${a.kind}</strong>: ${a.msg}
+          </div>
+          <div style="font-family:monospace;color:var(--tx-dim);">
+            ${new Date(a.t * 1000).toLocaleTimeString()}
+          </div>
+        </div>
+      `).join("");
+    }
+
+    // Event Listeners
+    document.getElementById("startCamBtn").addEventListener("click", startCamera);
+    document.getElementById("toggleCamBtn").addEventListener("click", () => {
+      if (isCameraRunning) stopCamera();
+      else startCamera();
+    });
+
+    function resetSessionUI() {
+      document.getElementById("sessionTimer").textContent = "00:00:00";
+      document.getElementById("focusedPct").textContent = "100.0%";
+      document.getElementById("distractedPct").textContent = "0.0%";
+      document.getElementById("drowsyPct").textContent = "0.0%";
+      document.getElementById("donutCenterPct").textContent = "100%";
+      drawDonutChart(100, 0, 0);
+
+      const btn = document.getElementById("resetSessionBtn");
+      if (btn) {
+        const orig = btn.innerHTML;
+        btn.innerHTML = "✓ Reset!";
+        setTimeout(() => { btn.innerHTML = orig; }, 1200);
+      }
+    }
+
+    document.getElementById("resetSessionBtn").addEventListener("click", () => {
+      resetSessionUI();
+      if (wsCamera && wsCamera.readyState === WebSocket.OPEN) {
+        wsCamera.send(JSON.stringify({ action: "reset_session" }));
+      }
+      fetch(`/api/reset-session/${SENTINEL_ROOM_ID}`, { method: "POST" })
+        .then(() => resetSessionUI())
+        .catch(err => console.warn("Reset error:", err));
+    });
+
+    document.getElementById("audioToggleBtn").addEventListener("click", () => {
+      audioAlertsEnabled = !audioAlertsEnabled;
+      document.getElementById("audioToggleBtn").style.borderColor = audioAlertsEnabled ? "var(--focused)" : "var(--border)";
+      document.getElementById("audioToggleBtn").style.color = audioAlertsEnabled ? "var(--focused)" : "var(--tx-main)";
+      document.getElementById("audioIcon").textContent = audioAlertsEnabled ? "🔊" : "🔇";
+      if (audioAlertsEnabled) playBeep(600, 0.1);
+    });
+
+    document.getElementById("themeToggleBtn").addEventListener("click", () => {
+      const current = document.documentElement.getAttribute("data-theme");
+      if (current === "beige") {
+        document.documentElement.removeAttribute("data-theme");
+      } else {
+        document.documentElement.setAttribute("data-theme", "beige");
+      }
+      drawDonutChart(100, 0, 0);
+    });
+
+    document.getElementById("snapshotBtn").addEventListener("click", () => {
+      const link = document.createElement("a");
+      link.download = `attention_snapshot_${Date.now()}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    });
+
+    // QR Code Connect Phone Modal
+    const qrModal = document.getElementById("qrModal");
+    document.getElementById("qrJoinBtn").addEventListener("click", async () => {
+      try {
+        const res = await fetch("/api/new-camera", { method: "POST" });
+        const data = await res.json();
+        const confRes = await fetch("/api/config");
+        serverConfig = await confRes.json();
+
+        const joinUrl = `${serverConfig.server_url}/cam/${data.id}`;
+        document.getElementById("qrUrlText").textContent = joinUrl;
+
+        const qrContainer = document.getElementById("qrcode-container");
+        qrContainer.innerHTML = "";
+        new QRCode(qrContainer, {
+          text: joinUrl,
+          width: 200,
+          height: 200,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.M
+        });
+
+        qrModal.classList.add("show");
+      } catch (e) {
+        alert("Unable to generate QR code: " + e.message);
+      }
+    });
+
+    document.getElementById("closeQrBtn").addEventListener("click", () => {
+      qrModal.classList.remove("show");
+    });
+
+    document.getElementById("addCamBtn").addEventListener("click", () => {
+      document.getElementById("qrJoinBtn").click();
+    });
+
+    // Initialize on Page Load
+    window.addEventListener("DOMContentLoaded", () => {
+      drawDonutChart(100, 0, 0);
+      listCameras();
+      connectSentinelWs();
+      connectDashboardWs();
+    });
+  </script>
+</body>
+</html>
