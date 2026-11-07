@@ -83,25 +83,30 @@ The dashboard features a high-performance, two-panel split screen with a retro-m
 
 ```mermaid
 flowchart TD
-    A[Webcam / Phone Video Stream] --> B[Offscreen Canvas 640x480]
-    B -->|WebSocket Binary JPEG Pacing| C[FastAPI Server :5050]
+    A["Webcam / Phone Video Stream"] --> B["Offscreen Canvas (640x480)"]
+    B -->|"WebSocket Binary JPEG"| C["FastAPI Server (:5050)"]
     
-    subgraph Vision Pipeline
-        C --> D[YOLO11 Object Detector - Phone Detection]
-        C --> E[MediaPipe FaceLandmarker - 478 Mesh Points]
-        C --> F[YOLO11-Pose - Skeletal Keypoints]
+    subgraph VP ["AI Vision Pipeline"]
+        C --> D["YOLO11 Object Detector (Phone Detection)"]
+        C --> E["MediaPipe FaceLandmarker (478 Mesh Points)"]
+        C --> F["YOLO11-Pose (Skeletal Keypoints)"]
         
-        E --> G[EAR Calculation & Eye Blendshapes]
-        E --> H[solvePnP & RQDecomp3x3 - Yaw/Pitch/Roll]
-        E --> I[Iris Vectors - Gaze Direction]
+        E --> G["EAR Calculation & Eye Blendshapes"]
+        E --> H["solvePnP & RQDecomp3x3 (Yaw/Pitch/Roll)"]
+        E --> I["Iris Vectors (Gaze Direction)"]
     end
     
-    Vision Pipeline --> J[Attention State Classifier]
-    J --> K[Session State Accumulator & Donut Engine]
-    J --> L[Annotated Frame Encoder]
+    D --> J["Attention State Classifier"]
+    G --> J
+    H --> J
+    I --> J
+    F --> J
     
-    L -->|WebSocket JSON Telemetry + JPEG Frame| M[AttentionAI Dashboard UI]
-    K -->|Donut % & Session Timer| M
+    J --> K["Session State Accumulator & Donut Engine"]
+    J --> L["Annotated Frame Encoder"]
+    
+    L -->|"WebSocket JSON Telemetry + JPEG"| M["AttentionAI Dashboard UI"]
+    K -->|"Donut % & Session Timer"| M
 ```
 
 ---
